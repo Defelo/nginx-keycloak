@@ -25,6 +25,8 @@ RUN cargo build --release \
 
 FROM scratch
 
+LABEL org.opencontainers.image.source="https://github.com/Defelo/nginx-keycloak"
+
 ENV ROCKET_PROFILE="release" \
     ROCKET_ADDRESS=0.0.0.0 \
     ROCKET_PORT=80
