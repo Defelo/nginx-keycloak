@@ -2,7 +2,7 @@ FROM rust:alpine AS builder
 
 WORKDIR /build
 
-RUN apk add --no-cache musl-dev openssl openssl-dev openssl-libs-static
+RUN apk add --no-cache musl-dev openssl openssl-dev openssl-libs-static upx
 
 ENV OPENSSL_STATIC=yes \
     OPENSSL_LIB_DIR=/usr/lib/ \
@@ -20,7 +20,7 @@ RUN echo "fn main() {}" > tmp.rs \
 COPY src src
 
 RUN cargo build --release \
-    && mv target/release/nginx-keycloak app
+    && upx --best --lzma -o app target/release/nginx-keycloak
 
 
 FROM scratch

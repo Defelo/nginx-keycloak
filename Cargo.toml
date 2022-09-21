@@ -10,6 +10,9 @@ path = "src/main.rs"
 [profile.release]
 opt-level = 3
 strip = "symbols"
+lto = true
+codegen-units = 1
+panic = "abort"
 
 [dependencies]
 dotenv = "0.15.0"
