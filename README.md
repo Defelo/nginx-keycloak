@@ -1,5 +1,7 @@
 # nginx-keycloak
-Keycloak Integration for Nginx via auth_request
+[Keycloak](https://www.keycloak.org/) Integration for [Nginx](https://nginx.org/) via [`auth_request`](https://nginx.org/en/docs/http/ngx_http_auth_request_module.html)
+
+Restricts access to Nginx sites by requiring users to authenticate with their Keycloak account. Only users with a specific role (configurable per service) are granted access.
 
 ## Setup Instructions
 
@@ -8,7 +10,7 @@ Keycloak Integration for Nginx via auth_request
 2. Enable `Client authentication`
 3. Create Redirect URIs for your services (e.g. `https://<DOMAIN>/_auth/callback`, see `AUTH_CALLBACK` environment variable)
 4. Copy secret from `Credentials` tab
-5. Go to `Client scopes` &rarr; `<CLIENT_ID>-dedicated` and add a predefined `client roles` mapper:
+5. Go to `Client scopes` &rarr; `CLIENT_ID-dedicated` and add a predefined `client roles` mapper:
     - Set `Client ID` to the id of your client
     - Set `Token Claim Name` to `roles`
     - Disable `Add to access token`
@@ -31,7 +33,7 @@ Keycloak Integration for Nginx via auth_request
     ```nginx
     location /_auth/keycloak {
         internal;
-        proxy_pass http://<CONTAINER_HOST>:<CONTAINER_PORT>/auth?role=SERVICE_ROLE_NAME;
+        proxy_pass http://CONTAINER_HOST:CONTAINER_PORT/auth?role=SERVICE_ROLE_NAME;
         proxy_pass_request_body off;
         proxy_set_header Content-Length "";
         proxy_set_header X-Request-Uri $scheme://$host$request_uri;
