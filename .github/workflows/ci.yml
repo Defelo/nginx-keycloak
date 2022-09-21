@@ -8,6 +8,40 @@ env:
   IMAGE_NAME: defelo/nginx-keycloak
 
 jobs:
+  codestyle:
+    name: Codestyle (rustfmt)
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Check code formatting with rustfmt
+        run: cargo fmt --check
+
+  linter:
+    name: Linter (clippy)
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Cache target directory
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-clippy-target
+
+      - name: Check code with clippy
+        run: cargo clippy
+
   docker_build:
     name: Docker Build
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
@@ -84,7 +118,7 @@ jobs:
   docker_push:
     name: Docker Push
     if: ${{ github.event_name != 'pull_request' && github.actor != 'dependabot[bot]' && github.ref != 'refs/heads/template' }}
-    needs: [ docker_build ]
+    needs: [ codestyle, linter, docker_build ]
     concurrency: docker
     runs-on: ubuntu-latest
 
