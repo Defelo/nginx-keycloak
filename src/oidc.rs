@@ -11,27 +11,31 @@ pub fn get_callback_url(url: &Url) -> Option<Url> {
     url.join(&config().auth_callback).ok()
 }
 
-pub fn create_redirect_url(redirect_url: &Url, callback_url: &Url) -> String {
-    Url::parse_with_params(
-        config().auth_url.as_str(),
-        &[
-            ("client_id", config().client_id.as_str()),
-            ("redirect_uri", callback_url.as_str()),
-            ("response_type", "code"),
-            ("scope", "openid"),
-            ("state", redirect_url.as_str()),
-        ],
+pub fn create_redirect_url(redirect_url: &Url, callback_url: &Url) -> Option<String> {
+    Some(
+        Url::parse_with_params(
+            config().auth_url.as_str(),
+            &[
+                ("client_id", config().client_id.as_str()),
+                ("redirect_uri", callback_url.as_str()),
+                ("response_type", "code"),
+                ("scope", "openid"),
+                ("state", redirect_url.as_str()),
+            ],
+        )
+        .ok()?
+        .as_str()
+        .into(),
     )
-    .unwrap()
-    .as_str()
-    .into()
 }
 
+#[derive(Debug)]
 pub struct CodeAuth {
     pub code: String,
     pub callback_url: String,
 }
 
+#[derive(Debug)]
 pub enum AuthType {
     Code(CodeAuth),
     RefreshToken(String),
@@ -91,6 +95,7 @@ pub async fn get_userinfo(access_token: &str) -> Option<UserInfo> {
         .ok()?
 }
 
+#[derive(Debug)]
 pub struct Session {
     pub session_id: String,
     pub userinfo: UserInfo,

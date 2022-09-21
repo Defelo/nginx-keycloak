@@ -17,6 +17,7 @@ struct Environment {
     session_forbidden_ttl: usize,
 }
 
+#[derive(Debug)]
 pub struct Config {
     pub auth_url: Url,
     pub token_url: Url,

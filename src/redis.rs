@@ -2,6 +2,7 @@ use redis::{AsyncCommands, RedisResult};
 
 use crate::{config::config, oidc};
 
+#[derive(Debug)]
 pub struct Token {
     pub access_token: String,
     pub refresh_token: String,
@@ -39,6 +40,7 @@ pub async fn get_token(session_id: &str) -> RedisResult<Token> {
     })
 }
 
+#[derive(Debug)]
 pub enum SessionCache {
     Allowed,
     Forbidden,

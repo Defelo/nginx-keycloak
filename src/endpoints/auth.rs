@@ -82,11 +82,13 @@ impl<'r> FromRequest<'r> for AuthRequest {
     }
 }
 
+#[derive(Debug)]
 pub struct LoginResponse {
     session_id: String,
     redirect_url: String,
 }
 
+#[derive(Debug)]
 pub enum AuthResponder {
     Allowed,
     Redirect(String),
@@ -143,10 +145,9 @@ async fn handle_default(request: DefaultRequest) -> Result<AuthResponder, AuthRe
     }
 
     let callback_url = get_callback_url(&request.request_uri).ok_or(AuthResponder::Error)?;
-    Ok(AuthResponder::Redirect(create_redirect_url(
-        &request.request_uri,
-        &callback_url,
-    )))
+    let redirect_url =
+        create_redirect_url(&request.request_uri, &callback_url).ok_or(AuthResponder::Error)?;
+    Ok(AuthResponder::Redirect(redirect_url))
 }
 
 async fn handle_callback(request: CallbackRequest) -> Result<AuthResponder, AuthResponder> {
@@ -165,10 +166,8 @@ async fn handle_callback(request: CallbackRequest) -> Result<AuthResponder, Auth
 
 #[get("/auth")]
 pub async fn auth(request: AuthRequest) -> Result<AuthResponder, AuthResponder> {
-    println!("request: {:#?}", request);
-
     match request {
-        AuthRequest::Default(request_uri) => handle_default(request_uri).await,
+        AuthRequest::Default(request) => handle_default(request).await,
         AuthRequest::Callback(request) => handle_callback(request).await,
     }
 }
