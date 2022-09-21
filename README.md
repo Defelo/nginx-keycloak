@@ -31,7 +31,7 @@ Restricts access to Nginx sites by requiring users to authenticate with their Ke
     ```
 2. Create an internal `location` block in your server:
     ```nginx
-    location /_auth/keycloak {
+    location = /_auth/keycloak {
         internal;
         proxy_pass http://CONTAINER_HOST:CONTAINER_PORT/auth?role=SERVICE_ROLE_NAME;
         proxy_pass_request_body off;
