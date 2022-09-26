@@ -77,6 +77,7 @@ pub async fn get_token(auth: &AuthType) -> Option<TokenResponse> {
 
 #[derive(Deserialize, Debug)]
 pub struct UserInfo {
+    #[serde(default)]
     pub roles: Vec<String>,
 }
 

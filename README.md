@@ -45,5 +45,5 @@ Restricts access to Nginx sites by requiring users to authenticate with their Ke
     auth_request_set $auth_redirect $upstream_http_x_auth_redirect;
     auth_request_set $auth_cookie $upstream_http_x_auth_cookie;
     error_page 401 =307 $auth_redirect;
-    add_header Set-Cookie $auth_cookie;
+    add_header Set-Cookie $auth_cookie always;
     ```
