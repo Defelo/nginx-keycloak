@@ -31,7 +31,7 @@ Restricts access to Nginx sites by requiring users to authenticate with their Ke
     ```
 2. Create an internal `location` block in your server:
     ```nginx
-    location = /_auth/keycloak {
+    location .auth {
         internal;
         proxy_pass http://CONTAINER_HOST:CONTAINER_PORT/auth?role=SERVICE_ROLE_NAME;
         proxy_pass_request_body off;
@@ -41,7 +41,7 @@ Restricts access to Nginx sites by requiring users to authenticate with their Ke
     ```
 3. Add the following to any `location` block you want to control access to:
     ```nginx
-    auth_request /_auth/keycloak;
+    auth_request .auth;
     auth_request_set $auth_redirect $upstream_http_x_auth_redirect;
     auth_request_set $auth_cookie $upstream_http_x_auth_cookie;
     error_page 401 =307 $auth_redirect;
