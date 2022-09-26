@@ -1,7 +1,11 @@
 [package]
 name = "nginx-keycloak"
+description = "Keycloak Integration for Nginx via auth_request"
 version = "0.1.0"
+license = "MIT"
 edition = "2021"
+readme = "README.md"
+repository = "https://github.com/Defelo/nginx-keycloak"
 
 [[bin]]
 name = "nginx-keycloak"
