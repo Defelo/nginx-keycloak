@@ -37,12 +37,12 @@ impl CallbackRequest {
 }
 
 #[derive(Debug)]
-pub enum AuthRequest {
+pub enum RequestData {
     Default(DefaultRequest),
     Callback(CallbackRequest),
 }
 
-impl AuthRequest {
+impl RequestData {
     fn new(request: &Request) -> Option<Self> {
         let uri = request.headers().get_one("x-request-uri")?;
         let request_uri = Url::parse(uri).ok()?;
@@ -72,10 +72,10 @@ impl AuthRequest {
 }
 
 #[async_trait]
-impl<'r> FromRequest<'r> for AuthRequest {
+impl<'r> FromRequest<'r> for RequestData {
     type Error = ();
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        match AuthRequest::new(request) {
+        match Self::new(request) {
             Some(headers) => Outcome::Success(headers),
             None => Outcome::Failure((Status::BadRequest, ())),
         }
@@ -89,7 +89,7 @@ pub struct LoginResponse {
 }
 
 #[derive(Debug)]
-pub enum AuthResponder {
+pub enum ResponseData {
     Allowed,
     Redirect(String),
     Login(LoginResponse),
@@ -98,14 +98,14 @@ pub enum AuthResponder {
 }
 
 #[async_trait]
-impl<'r> Responder<'r, 'static> for AuthResponder {
+impl<'r> Responder<'r, 'static> for ResponseData {
     fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
         let mut response = Response::build();
         match self {
             Self::Allowed => {
                 response.status(Status::Ok);
             }
-            Self::Forbidden => {
+            Self::Forbidden | Self::Error => {
                 response.status(Status::Forbidden);
             }
             Self::Redirect(login_url) => {
@@ -123,51 +123,48 @@ impl<'r> Responder<'r, 'static> for AuthResponder {
                     format!("_keycloak_auth_session={session_id}; Secure; HttpOnly; Path=/"),
                 ));
             }
-            Self::Error => {
-                response.status(Status::Forbidden);
-            }
         }
         response.ok()
     }
 }
 
-async fn handle_default(request: DefaultRequest) -> Result<AuthResponder, AuthResponder> {
+async fn handle_default(request: DefaultRequest) -> Result<ResponseData, ResponseData> {
     if let Some(session_id) = request.session_id {
         match is_authorized(session_id.as_str(), &request.role).await {
             Some(true) => {
-                return Ok(AuthResponder::Allowed);
+                return Ok(ResponseData::Allowed);
             }
             Some(false) => {
-                return Ok(AuthResponder::Forbidden);
+                return Ok(ResponseData::Forbidden);
             }
             None => {}
         }
     }
 
-    let callback_url = get_callback_url(&request.request_uri).ok_or(AuthResponder::Error)?;
+    let callback_url = get_callback_url(&request.request_uri).ok_or(ResponseData::Error)?;
     let redirect_url =
-        create_redirect_url(&request.request_uri, &callback_url).ok_or(AuthResponder::Error)?;
-    Ok(AuthResponder::Redirect(redirect_url))
+        create_redirect_url(&request.request_uri, &callback_url).ok_or(ResponseData::Error)?;
+    Ok(ResponseData::Redirect(redirect_url))
 }
 
-async fn handle_callback(request: CallbackRequest) -> Result<AuthResponder, AuthResponder> {
+async fn handle_callback(request: CallbackRequest) -> Result<ResponseData, ResponseData> {
     let Session { session_id, .. } = create_session(CodeAuth {
         code: request.code,
         callback_url: request.callback_url.into(),
     })
     .await
-    .ok_or(AuthResponder::Error)?;
+    .ok_or(ResponseData::Error)?;
 
-    Ok(AuthResponder::Login(LoginResponse {
+    Ok(ResponseData::Login(LoginResponse {
         session_id,
         redirect_url: request.request_url.into(),
     }))
 }
 
 #[get("/auth")]
-pub async fn auth(request: AuthRequest) -> Result<AuthResponder, AuthResponder> {
+pub async fn auth(request: RequestData) -> Result<ResponseData, ResponseData> {
     match request {
-        AuthRequest::Default(request) => handle_default(request).await,
-        AuthRequest::Callback(request) => handle_callback(request).await,
+        RequestData::Default(request) => handle_default(request).await,
+        RequestData::Callback(request) => handle_callback(request).await,
     }
 }

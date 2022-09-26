@@ -1,7 +1,4 @@
-use crate::{
-    config::config,
-    redis::{self},
-};
+use crate::{config::config, redis};
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Client;
 use serde::Deserialize;
