@@ -8,10 +8,10 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 struct Environment {
-    issuer: String,
+    keycloak_base_url: String,
     client_id: String,
     client_secret: String,
-    auth_callback: String,
+    auth_callback_path: String,
     redis_url: String,
     session_allowed_ttl: usize,
     session_forbidden_ttl: usize,
@@ -50,8 +50,14 @@ static CONFIG: Lazy<Config> = Lazy::new(|| {
 fn load_config() -> Result<Config, String> {
     let env: Environment = envy::from_env().map_err(|err| err.to_string())?;
     let get_url = |endpoint| {
-        Url::parse(format!("{}/protocol/openid-connect/{}", env.issuer, endpoint).as_str())
-            .map_err(|err| err.to_string())
+        Url::parse(
+            format!(
+                "{}/protocol/openid-connect/{}",
+                env.keycloak_base_url, endpoint
+            )
+            .as_str(),
+        )
+        .map_err(|err| err.to_string())
     };
     Ok(Config {
         auth_url: get_url("auth")?,
@@ -59,7 +65,7 @@ fn load_config() -> Result<Config, String> {
         userinfo_url: get_url("userinfo")?,
         client_id: env.client_id,
         client_secret: env.client_secret,
-        auth_callback: env.auth_callback,
+        auth_callback: env.auth_callback_path,
         redis: Client::open(env.redis_url).map_err(|err| err.to_string())?,
         session_allowed_ttl: env.session_allowed_ttl,
         session_forbidden_ttl: env.session_forbidden_ttl,
