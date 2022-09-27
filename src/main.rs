@@ -22,25 +22,28 @@ mod endpoints;
 mod oidc;
 mod redis;
 
-#[macro_use]
-extern crate rocket;
-
 #[allow(clippy::no_effect_underscore_binding)]
-#[main]
-async fn main() -> Result<(), rocket::Error> {
+#[rocket::main]
+async fn main() -> eyre::Result<()> {
     // read environment variables from .env file
     dotenv::dotenv().ok();
 
     // initialize logger
     pretty_env_logger::init();
 
+    // initialize panic and error report handler
+    color_eyre::install()?;
+
     // load config from environment variables
     config::config();
 
     // start rocket server
-    rocket::build()
-        .mount("/", routes![endpoints::auth::auth])
-        .launch()
-        .await
-        .map(|_| ())
+    drop(
+        rocket::build()
+            .mount("/", rocket::routes![endpoints::auth::auth])
+            .launch()
+            .await?,
+    );
+
+    Ok(())
 }

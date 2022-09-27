@@ -1,6 +1,18 @@
-use redis::{AsyncCommands, RedisResult};
+use eyre::{Context, Result};
+
+use log::warn;
+use redis::AsyncCommands;
 
 use crate::{config::config, oidc};
+
+macro_rules! con {
+    () => {{
+        &mut config()
+            .get_redis_connection()
+            .await
+            .wrap_err("could not get redis connection")?
+    }};
+}
 
 #[derive(Debug)]
 pub struct Token {
@@ -8,8 +20,7 @@ pub struct Token {
     pub refresh_token: String,
 }
 
-pub async fn set_token(session_id: &str, token: &oidc::TokenResponse) -> RedisResult<()> {
-    let mut con = config().get_redis_connection().await?;
+pub async fn set_token(session_id: &str, token: &oidc::TokenResponse) -> Result<()> {
     redis::pipe()
         .set_ex(
             format!("access_token:{session_id}"),
@@ -21,14 +32,13 @@ pub async fn set_token(session_id: &str, token: &oidc::TokenResponse) -> RedisRe
             &token.refresh_token,
             token.refresh_expires_in,
         )
-        .query_async(&mut con)
+        .query_async(con!())
         .await?;
     Ok(())
 }
 
-pub async fn get_token(session_id: &str) -> RedisResult<Token> {
-    let mut con = config().get_redis_connection().await?;
-    let (access_token, refresh_token) = con
+pub async fn get_token(session_id: &str) -> Result<Token> {
+    let (access_token, refresh_token) = con!()
         .get(&[
             format!("access_token:{session_id}"),
             format!("refresh_token:{session_id}"),
@@ -51,31 +61,36 @@ pub async fn update_session_cache(
     session_id: &str,
     role: &str,
     state: &SessionCache,
-) -> RedisResult<()> {
-    let mut con = config().get_redis_connection().await?;
+) -> Result<()> {
     let key = format!("session:{session_id}:{role}");
     match state {
         SessionCache::Allowed => {
-            con.set_ex(key, "allowed", config().session_allowed_ttl)
-                .await
+            con!()
+                .set_ex(key, "allowed", config().session_allowed_ttl)
+                .await?;
         }
         SessionCache::Forbidden => {
-            con.set_ex(key, "forbidden", config().session_forbidden_ttl)
-                .await
+            con!()
+                .set_ex(key, "forbidden", config().session_forbidden_ttl)
+                .await?;
         }
-        SessionCache::NotCached => con.del(key).await,
+        SessionCache::NotCached => {
+            con!().del(key).await?;
+        }
     }
+    Ok(())
 }
 
-pub async fn get_session_cache(session_id: &str, role: &str) -> RedisResult<SessionCache> {
-    let mut con = config().get_redis_connection().await?;
-    let value: String = con
-        .get(format!("session:{session_id}:{role}"))
-        .await
-        .unwrap_or_default();
-    Ok(match value.as_str() {
-        "allowed" => SessionCache::Allowed,
-        "forbidden" => SessionCache::Forbidden,
-        _ => SessionCache::NotCached,
+pub async fn get_session_cache(session_id: &str, role: &str) -> Result<SessionCache> {
+    let value: Option<String> = con!().get(format!("session:{session_id}:{role}")).await?;
+
+    Ok(match value {
+        Some(ref s) if s == "allowed" => SessionCache::Allowed,
+        Some(ref s) if s == "forbidden" => SessionCache::Forbidden,
+        None => SessionCache::NotCached,
+        Some(ref s) => {
+            warn!("invalid session cache value for {session_id}: {s}");
+            SessionCache::NotCached
+        }
     })
 }

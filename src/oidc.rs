@@ -1,29 +1,28 @@
 use crate::{config::config, redis};
+use eyre::{Context, Result};
+use log::debug;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Client;
 use serde::Deserialize;
 use url::Url;
 
-pub fn get_callback_url(url: &Url) -> Option<Url> {
-    url.join(&config().auth_callback).ok()
+pub fn get_callback_url(url: &Url) -> Result<Url> {
+    Ok(url.join(&config().auth_callback)?)
 }
 
-pub fn create_redirect_url(redirect_url: &Url, callback_url: &Url) -> Option<String> {
-    Some(
-        Url::parse_with_params(
-            config().auth_url.as_str(),
-            &[
-                ("client_id", config().client_id.as_str()),
-                ("redirect_uri", callback_url.as_str()),
-                ("response_type", "code"),
-                ("scope", "openid"),
-                ("state", redirect_url.as_str()),
-            ],
-        )
-        .ok()?
-        .as_str()
-        .into(),
-    )
+pub fn create_redirect_url(redirect_url: &Url, callback_url: &Url) -> Result<String> {
+    Ok(Url::parse_with_params(
+        config().auth_url.as_str(),
+        &[
+            ("client_id", config().client_id.as_str()),
+            ("redirect_uri", callback_url.as_str()),
+            ("response_type", "code"),
+            ("scope", "openid"),
+            ("state", redirect_url.as_str()),
+        ],
+    )?
+    .as_str()
+    .into())
 }
 
 #[derive(Debug)]
@@ -46,7 +45,7 @@ pub struct TokenResponse {
     pub refresh_expires_in: usize,
 }
 
-pub async fn get_token(auth: &AuthType) -> Option<TokenResponse> {
+pub async fn get_token(auth: &AuthType) -> Result<TokenResponse> {
     let mut form = vec![
         ("client_id", config().client_id.as_str()),
         ("client_secret", config().client_secret.as_str()),
@@ -62,17 +61,14 @@ pub async fn get_token(auth: &AuthType) -> Option<TokenResponse> {
             form.push(("refresh_token", token));
         }
     }
-    Client::new()
+    Ok(Client::new()
         .post(config().token_url.clone())
         .form(&form)
         .send()
-        .await
-        .ok()?
-        .error_for_status()
-        .ok()?
+        .await?
+        .error_for_status()?
         .json()
-        .await
-        .ok()?
+        .await?)
 }
 
 #[derive(Deserialize, Debug)]
@@ -81,16 +77,14 @@ pub struct UserInfo {
     pub roles: Vec<String>,
 }
 
-pub async fn get_userinfo(access_token: &str) -> Option<UserInfo> {
-    Client::new()
+pub async fn get_userinfo(access_token: &str) -> Result<UserInfo> {
+    Ok(Client::new()
         .get(config().userinfo_url.clone())
         .header("Authorization", format!("Bearer {access_token}"))
         .send()
-        .await
-        .ok()?
+        .await?
         .json()
-        .await
-        .ok()?
+        .await?)
 }
 
 #[derive(Debug)]
@@ -99,46 +93,65 @@ pub struct Session {
     pub userinfo: UserInfo,
 }
 
-pub async fn create_session(auth: CodeAuth) -> Option<Session> {
-    let token = get_token(&AuthType::Code(auth)).await?;
-    let userinfo = get_userinfo(&token.access_token).await?;
+pub async fn create_session(auth: CodeAuth) -> Result<Session> {
+    let token = get_token(&AuthType::Code(auth))
+        .await
+        .wrap_err("could not fetch access token")?;
+    let userinfo = get_userinfo(&token.access_token)
+        .await
+        .wrap_err("could not fetch user info")?;
     let session_id: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(64)
         .map(char::from)
         .collect();
-    redis::set_token(session_id.as_str(), &token).await.ok()?;
-    Some(Session {
+    redis::set_token(session_id.as_str(), &token)
+        .await
+        .wrap_err("could not store token in redis")?;
+    Ok(Session {
         session_id,
         userinfo,
     })
 }
 
-pub async fn get_session(session_id: &str) -> Option<Session> {
-    let token = redis::get_token(session_id).await.ok()?;
+pub async fn get_session(session_id: &str) -> Result<Session> {
+    let token = redis::get_token(session_id)
+        .await
+        .wrap_err("could not fetch token from redis")?;
     let userinfo = match get_userinfo(&token.access_token).await {
-        Some(userinfo) => userinfo,
-        None => {
-            let token_response = get_token(&AuthType::RefreshToken(token.refresh_token)).await?;
-            let userinfo = get_userinfo(&token_response.access_token).await?;
-            redis::set_token(session_id, &token_response).await.ok()?;
+        Ok(userinfo) => userinfo,
+        Err(err) => {
+            debug!("could not use access token to fetch userinfo: {:?}", err);
+            let token_response = get_token(&AuthType::RefreshToken(token.refresh_token))
+                .await
+                .wrap_err("could not refresh access token")?;
+            let userinfo = get_userinfo(&token_response.access_token)
+                .await
+                .wrap_err("could not use fresh access token to fetch userinfo")?;
+            redis::set_token(session_id, &token_response)
+                .await
+                .wrap_err("could not store token in redis")?;
             userinfo
         }
     };
-    Some(Session {
+    Ok(Session {
         session_id: session_id.into(),
         userinfo,
     })
 }
 
-pub async fn is_authorized(session_id: &str, role: &str) -> Option<bool> {
-    Some(
-        match redis::get_session_cache(session_id, role).await.ok()? {
+pub async fn is_authorized(session_id: &str, role: &str) -> Result<bool> {
+    Ok(
+        match redis::get_session_cache(session_id, role)
+            .await
+            .wrap_err("could not get session cache from redis")?
+        {
             redis::SessionCache::Allowed => true,
             redis::SessionCache::Forbidden => false,
             redis::SessionCache::NotCached => {
                 let result: bool = get_session(session_id)
-                    .await?
+                    .await
+                    .wrap_err("could not fetch session data")?
                     .userinfo
                     .roles
                     .contains(&role.into());
@@ -152,7 +165,7 @@ pub async fn is_authorized(session_id: &str, role: &str) -> Option<bool> {
                     },
                 )
                 .await
-                .ok()?;
+                .wrap_err("could not update redis session cache")?;
                 result
             }
         },

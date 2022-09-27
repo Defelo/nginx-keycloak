@@ -1,8 +1,9 @@
-use redis::{aio::Connection, Client, RedisResult};
+use eyre::{Context, Result};
+use redis::{aio::Connection, Client};
 use std::process::exit;
 use url::Url;
 
-use log::{error, info};
+use log::{debug, error, info};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
@@ -31,24 +32,26 @@ pub struct Config {
 }
 
 impl Config {
-    pub async fn get_redis_connection(&self) -> RedisResult<Connection> {
-        self.redis.get_async_connection().await
+    pub async fn get_redis_connection(&self) -> Result<Connection> {
+        Ok(self.redis.get_async_connection().await?)
     }
 }
 
 static CONFIG: Lazy<Config> = Lazy::new(|| {
     info!("loading config");
-    match load_config() {
+    let conf = match load_config() {
         Ok(config) => config,
         Err(err) => {
             error!("Could not read environment variables: {}", err);
             exit(1);
         }
-    }
+    };
+    debug!("config loaded: {:#?}", conf);
+    conf
 });
 
-fn load_config() -> Result<Config, String> {
-    let env: Environment = envy::from_env().map_err(|err| err.to_string())?;
+fn load_config() -> Result<Config> {
+    let env: Environment = envy::from_env()?;
     let get_url = |endpoint| {
         Url::parse(
             format!(
@@ -57,16 +60,15 @@ fn load_config() -> Result<Config, String> {
             )
             .as_str(),
         )
-        .map_err(|err| err.to_string())
     };
     Ok(Config {
-        auth_url: get_url("auth")?,
-        token_url: get_url("token")?,
-        userinfo_url: get_url("userinfo")?,
+        auth_url: get_url("auth").wrap_err("could not parse auth url")?,
+        token_url: get_url("token").wrap_err("could not parse token url")?,
+        userinfo_url: get_url("userinfo").wrap_err("could not parse userinfo url")?,
         client_id: env.client_id,
         client_secret: env.client_secret,
         auth_callback: env.auth_callback_path,
-        redis: Client::open(env.redis_url).map_err(|err| err.to_string())?,
+        redis: Client::open(env.redis_url).wrap_err("could not create redis client")?,
         session_allowed_ttl: env.session_allowed_ttl,
         session_forbidden_ttl: env.session_forbidden_ttl,
     })
