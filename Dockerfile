@@ -2,11 +2,7 @@ FROM rust:alpine AS builder
 
 WORKDIR /build
 
-RUN apk add --no-cache musl-dev openssl openssl-dev openssl-libs-static upx
-
-ENV OPENSSL_STATIC=yes \
-    OPENSSL_LIB_DIR=/usr/lib/ \
-    OPENSSL_INCLUDE_DIR=/usr/include/
+RUN apk add --no-cache musl-dev upx
 
 COPY Cargo.toml .
 COPY Cargo.lock .
@@ -33,7 +29,6 @@ ENV ROCKET_PROFILE="release" \
 
 EXPOSE 80
 
-COPY --from=builder /etc/ssl/certs/ /etc/ssl/certs/
 COPY --from=builder /build/app /
 
 ENTRYPOINT ["/app"]
