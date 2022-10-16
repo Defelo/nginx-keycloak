@@ -1,5 +1,11 @@
 set dotenv-load
 
+alias r := run
+alias t := test
+alias f := fmt
+alias c := check
+alias p := pre-commit
+
 _default:
     @just --list
 
