@@ -15,7 +15,7 @@ run *args:
 
 # run unit tests
 test *args:
-    cargo test --locked {{args}}
+    cargo tarpaulin --locked --target-dir target-tarpaulin --skip-clean --exclude-files target -o html -o stdout {{args}}
 
 # run rustfmt
 fmt *args:

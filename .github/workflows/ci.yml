@@ -56,11 +56,17 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Cache target directory
+      - name: Cache target and cargo directories
         uses: actions/cache@v3
         with:
-          path: target
+          path: |
+            target
+            target-tarpaulin
+            ~/.cargo/bin
           key: ${{ runner.os }}-test-target
+
+      - name: Install tarpaulin
+        run: test -x ~/.cargo/bin/cargo-tarpaulin || cargo install cargo-tarpaulin
 
       - name: Setup just
         uses: extractions/setup-just@v1
