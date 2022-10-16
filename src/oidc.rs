@@ -10,7 +10,7 @@ pub fn get_callback_url(url: &Url) -> Result<Url> {
     Ok(url.join(&config().auth_callback)?)
 }
 
-pub fn create_redirect_url(redirect_url: &Url, callback_url: &Url) -> Result<String> {
+pub fn create_login_url(original_url: &Url, callback_url: &Url) -> Result<Url> {
     Ok(Url::parse_with_params(
         config().auth_url.as_str(),
         &[
@@ -18,17 +18,15 @@ pub fn create_redirect_url(redirect_url: &Url, callback_url: &Url) -> Result<Str
             ("redirect_uri", callback_url.as_str()),
             ("response_type", "code"),
             ("scope", "openid"),
-            ("state", redirect_url.as_str()),
+            ("state", original_url.as_str()),
         ],
-    )?
-    .as_str()
-    .into())
+    )?)
 }
 
 #[derive(Debug)]
 pub struct CodeAuth {
     pub code: String,
-    pub callback_url: String,
+    pub callback_url: Url,
 }
 
 #[derive(Debug)]
@@ -54,7 +52,7 @@ pub async fn get_token(auth: &AuthType) -> Result<TokenResponse> {
         AuthType::Code(CodeAuth { code, callback_url }) => {
             form.push(("grant_type", "authorization_code"));
             form.push(("code", code));
-            form.push(("redirect_uri", callback_url));
+            form.push(("redirect_uri", callback_url.as_str()));
         }
         AuthType::RefreshToken(token) => {
             form.push(("grant_type", "refresh_token"));

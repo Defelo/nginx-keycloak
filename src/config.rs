@@ -9,6 +9,8 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 struct Environment {
+    host: String,
+    port: u16,
     keycloak_base_url: String,
     client_id: String,
     client_secret: String,
@@ -20,6 +22,8 @@ struct Environment {
 
 #[derive(Debug)]
 pub struct Config {
+    pub host: String,
+    pub port: u16,
     pub auth_url: Url,
     pub token_url: Url,
     pub userinfo_url: Url,
@@ -62,6 +66,8 @@ fn load_config() -> Result<Config> {
         )
     };
     Ok(Config {
+        host: env.host,
+        port: env.port,
         auth_url: get_url("auth").wrap_err("could not parse auth url")?,
         token_url: get_url("token").wrap_err("could not parse token url")?,
         userinfo_url: get_url("userinfo").wrap_err("could not parse userinfo url")?,

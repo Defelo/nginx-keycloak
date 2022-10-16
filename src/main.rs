@@ -16,6 +16,11 @@
     clippy::str_to_string,
     clippy::wildcard_enum_match_arm
 )]
+#![allow(clippy::unused_async, clippy::module_name_repetitions)]
+
+use std::net::SocketAddr;
+
+use axum::Server;
 
 mod config;
 mod endpoints;
@@ -23,7 +28,7 @@ mod oidc;
 mod redis;
 
 #[allow(clippy::no_effect_underscore_binding)]
-#[rocket::main]
+#[tokio::main]
 async fn main() -> eyre::Result<()> {
     // initialize logger
     pretty_env_logger::init();
@@ -32,15 +37,12 @@ async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
     // load config from environment variables
-    config::config();
+    let conf = config::config();
 
-    // start rocket server
-    drop(
-        rocket::build()
-            .mount("/", rocket::routes![endpoints::auth::auth])
-            .launch()
-            .await?,
-    );
+    // start axum server
+    Server::bind(&SocketAddr::new(conf.host.parse()?, conf.port))
+        .serve(endpoints::router().into_make_service())
+        .await?;
 
     Ok(())
 }
