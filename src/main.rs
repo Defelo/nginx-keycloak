@@ -25,9 +25,6 @@ mod redis;
 #[allow(clippy::no_effect_underscore_binding)]
 #[rocket::main]
 async fn main() -> eyre::Result<()> {
-    // read environment variables from .env file
-    dotenv::dotenv().ok();
-
     // initialize logger
     pretty_env_logger::init();
 
