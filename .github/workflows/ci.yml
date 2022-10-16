@@ -103,7 +103,7 @@ jobs:
 
       - name: Create Tag
         id: tag
-        run: echo ::set-output "name=tag::$(echo ${{ matrix.platform }} | tr / -)"
+        run: echo "tag=$(echo ${{ matrix.platform }} | tr / -)" >> $GITHUB_OUTPUT
 
       - name: Build
         uses: docker/build-push-action@v3.2.0
@@ -131,7 +131,7 @@ jobs:
 
           name=${TAG}.tar.gz
           docker save $TAG | gzip > $name
-          echo ::set-output name=name::$name
+          echo "name=$name" >> $GITHUB_OUTPUT
 
       - name: Upload Docker Image Archive
         uses: actions/upload-artifact@v3
