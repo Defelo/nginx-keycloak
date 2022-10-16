@@ -8,8 +8,7 @@ env:
   IMAGE_NAME: defelo/nginx-keycloak
 
 jobs:
-  codestyle:
-    name: Codestyle (rustfmt)
+  fmt:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
     runs-on: ubuntu-latest
 
@@ -19,11 +18,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Check code formatting with rustfmt
-        run: cargo fmt --check
+      - name: Setup just
+        uses: extractions/setup-just@v1
 
-  linter:
-    name: Linter (clippy)
+      - name: Check code formatting with rustfmt
+        run: just fmt --check
+
+  check:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
     runs-on: ubuntu-latest
 
@@ -37,13 +38,37 @@ jobs:
         uses: actions/cache@v3
         with:
           path: target
-          key: ${{ runner.os }}-clippy-target
+          key: ${{ runner.os }}-check-target
+
+      - name: Setup just
+        uses: extractions/setup-just@v1
 
       - name: Check code with clippy
-        run: cargo clippy -- -D warnings
+        run: just check
+
+  test:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Cache target directory
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-test-target
+
+      - name: Setup just
+        uses: extractions/setup-just@v1
+
+      - name: Run unit tests
+        run: just test
 
   docker_build:
-    name: Docker Build
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
     runs-on: ubuntu-latest
     strategy:
@@ -116,9 +141,8 @@ jobs:
           retention-days: 1
 
   docker_push:
-    name: Docker Push
     if: ${{ github.event_name != 'pull_request' && github.actor != 'dependabot[bot]' && github.ref != 'refs/heads/template' }}
-    needs: [ codestyle, linter, docker_build ]
+    needs: [ fmt, check, test, docker_build ]
     concurrency: docker
     runs-on: ubuntu-latest
 

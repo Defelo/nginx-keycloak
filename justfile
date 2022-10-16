@@ -18,8 +18,8 @@ test *args:
     cargo test --locked {{args}}
 
 # run rustfmt
-fmt:
-    cargo fmt
+fmt *args:
+    cargo fmt {{args}}
 
 # run clippy
 check:
