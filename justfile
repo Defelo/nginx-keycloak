@@ -15,6 +15,10 @@ run *args:
 
 # run unit tests
 test *args:
+    cargo test --locked -- --show-output
+
+# run unit tests with coverage
+coverage *args:
     cargo tarpaulin --locked --target-dir target-tarpaulin --skip-clean --exclude-files target -o html -o stdout {{args}}
 
 # run rustfmt
@@ -26,4 +30,4 @@ check:
     cargo clippy -- -D warnings
 
 # run pre-commit hook
-pre-commit: fmt check test
+pre-commit: fmt check coverage
