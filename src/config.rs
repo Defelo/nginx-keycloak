@@ -2,6 +2,7 @@ use eyre::Result;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub struct Config {
     pub host: String,
     pub port: u16,
@@ -19,4 +20,39 @@ pub fn load() -> Result<Config> {
         .add_source(config::Environment::default())
         .build()?
         .try_deserialize()?)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load() {
+        std::env::vars().for_each(|(var, _)| std::env::remove_var(var));
+        std::env::set_var("HOST", "127.0.0.1");
+        std::env::set_var("PORT", "80");
+        std::env::set_var("KEYCLOAK_BASE_URL", "http://id.domain.de/realms/my_realm/");
+        std::env::set_var("CLIENT_ID", "my_oidc_client");
+        std::env::set_var("CLIENT_SECRET", "1t6IZN9qW2Ex1ZlS0OkBeATj");
+        std::env::set_var("AUTH_CALLBACK_PATH", "/_auth/callback");
+        std::env::set_var("REDIS_URL", "redis://my_redis:6379/42");
+        std::env::set_var("SESSION_ALLOWED_TTL", "1337");
+        std::env::set_var("SESSION_FORBIDDEN_TTL", "42");
+        let config = load().unwrap();
+        assert_eq!(
+            config,
+            Config {
+                host: "127.0.0.1".to_owned(),
+                port: 80,
+                keycloak_base_url: "http://id.domain.de/realms/my_realm/".to_owned(),
+                client_id: "my_oidc_client".to_owned(),
+                client_secret: "1t6IZN9qW2Ex1ZlS0OkBeATj".to_owned(),
+                auth_callback_path: "/_auth/callback".to_owned(),
+                redis_url: "redis://my_redis:6379/42".to_owned(),
+                session_allowed_ttl: 1337,
+                session_forbidden_ttl: 42,
+            }
+        );
+    }
 }
