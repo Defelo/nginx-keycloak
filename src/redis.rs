@@ -110,3 +110,29 @@ pub enum SessionCache {
     Forbidden,
     NotCached,
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_err() {
+        assert!(Redis::new("asdiofjasfdjoi", 1337, 42).is_err());
+    }
+
+    #[test]
+    fn test_new_ok() {
+        let res = Redis::new("redis://my_redis_host:6379/42", 1337, 42).unwrap();
+        let connection_info = res.client.get_connection_info();
+        assert_eq!(
+            connection_info.addr,
+            redis::ConnectionAddr::Tcp("my_redis_host".to_owned(), 6379),
+        );
+        assert_eq!(connection_info.redis.db, 42);
+        assert_eq!(connection_info.redis.username, None);
+        assert_eq!(connection_info.redis.password, None);
+        assert_eq!(res.session_allowed_ttl, 1337);
+        assert_eq!(res.session_forbidden_ttl, 42);
+    }
+}
