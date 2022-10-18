@@ -7,26 +7,6 @@ use url::Url;
 
 use crate::redis::{Redis, SessionCache};
 
-#[derive(Debug)]
-pub struct CodeAuth {
-    pub code: String,
-    pub callback_url: Url,
-}
-
-#[derive(Debug)]
-pub enum AuthType {
-    Code(CodeAuth),
-    RefreshToken(String),
-}
-
-#[derive(Deserialize, Debug)]
-pub struct TokenResponse {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: usize,
-    pub refresh_expires_in: usize,
-}
-
 pub struct OIDC {
     auth_url: Url,
     token_url: Url,
@@ -35,18 +15,6 @@ pub struct OIDC {
     client_secret: String,
     pub auth_callback_path: String,
     redis: Redis,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct UserInfo {
-    #[serde(default)]
-    pub roles: Vec<String>,
-}
-
-#[derive(Debug)]
-pub struct Session {
-    pub session_id: String,
-    pub userinfo: UserInfo,
 }
 
 impl OIDC {
@@ -212,4 +180,36 @@ impl OIDC {
             },
         )
     }
+}
+
+#[derive(Debug)]
+pub struct CodeAuth {
+    pub code: String,
+    pub callback_url: Url,
+}
+
+#[derive(Debug)]
+pub enum AuthType {
+    Code(CodeAuth),
+    RefreshToken(String),
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: usize,
+    pub refresh_expires_in: usize,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UserInfo {
+    #[serde(default)]
+    pub roles: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct Session {
+    pub session_id: String,
+    pub userinfo: UserInfo,
 }

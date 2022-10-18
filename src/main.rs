@@ -16,11 +16,7 @@
     clippy::str_to_string,
     clippy::wildcard_enum_match_arm
 )]
-#![allow(
-    clippy::unused_async,
-    clippy::module_name_repetitions,
-    clippy::upper_case_acronyms
-)]
+#![allow(clippy::module_name_repetitions, clippy::upper_case_acronyms)]
 
 use std::net::SocketAddr;
 

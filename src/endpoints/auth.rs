@@ -14,41 +14,57 @@ use url::Url;
 
 use crate::oidc::{CodeAuth, Session, OIDC};
 
-pub enum AuthResponse {
-    Ok,
-    Forbidden,
-    RedirectToLogin(Url),
-    StoreSession(String, Url),
-    InternalError(&'static str, Option<Report>),
-}
+pub async fn auth(
+    State(oidc): State<Arc<OIDC>>,
+    Query(AuthQuery { role }): Query<AuthQuery>,
+    headers: HeaderMap,
+) -> axum::response::Result<AuthResponse> {
+    let request_uri = Url::parse(
+        headers
+            .get("x-request-uri")
+            .ok_or(AuthResponse::InternalError(
+                "x-request-uri header not found",
+                None,
+            ))?
+            .to_str()
+            .map_err(|err| {
+                AuthResponse::InternalError("invalid x-request-uri header", Some(err.into()))
+            })?,
+    )
+    .map_err(|err| {
+        AuthResponse::InternalError(
+            "could not parse url in x-request-uri header",
+            Some(err.into()),
+        )
+    })?;
 
-impl IntoResponse for AuthResponse {
-    fn into_response(self) -> axum::response::Response {
-        match self {
-            Self::Ok => StatusCode::OK.into_response(),
-            Self::Forbidden => StatusCode::FORBIDDEN.into_response(),
-            Self::RedirectToLogin(url) => (
-                StatusCode::UNAUTHORIZED,
-                [("X-Auth-Redirect", url.as_str())],
-            )
-                .into_response(),
-            Self::StoreSession(session_id, redirect_url) => (
-                StatusCode::UNAUTHORIZED,
-                [
-                    ("X-Auth-Redirect", redirect_url.as_str()),
-                    (
-                        "X-Auth-Cookie",
-                        format!("_keycloak_auth_session={session_id}; Secure; HttpOnly; Path=/")
-                            .as_str(),
-                    ),
-                ],
-            )
-                .into_response(),
-            Self::InternalError(error, report) => {
-                error!("{}: {:?}", error, report);
-                (StatusCode::INTERNAL_SERVER_ERROR, error).into_response()
-            }
+    let callback_url = oidc
+        .get_callback_url(&request_uri)
+        .map_err(|err| AuthResponse::InternalError("could not create callback url", Some(err)))?;
+    let login_url = oidc
+        .create_login_url(&request_uri, &callback_url)
+        .map_err(|err| AuthResponse::InternalError("could not create login url", Some(err)))?;
+
+    if request_uri.path() == oidc.auth_callback_path {
+        CallbackRequest {
+            request_uri,
+            callback_url,
+            login_url,
         }
+        .handle(&oidc)
+        .await
+    } else {
+        AuthRequest {
+            session_id: headers.typed_get::<Cookie>().and_then(|cookies| {
+                cookies
+                    .get("_keycloak_auth_session")
+                    .map(std::borrow::ToOwned::to_owned)
+            }),
+            role,
+            login_url,
+        }
+        .handle(&oidc)
+        .await
     }
 }
 
@@ -120,56 +136,40 @@ impl CallbackRequest {
     }
 }
 
-pub async fn auth(
-    State(oidc): State<Arc<OIDC>>,
-    Query(AuthQuery { role }): Query<AuthQuery>,
-    headers: HeaderMap,
-) -> axum::response::Result<AuthResponse> {
-    let request_uri = Url::parse(
-        headers
-            .get("x-request-uri")
-            .ok_or(AuthResponse::InternalError(
-                "x-request-uri header not found",
-                None,
-            ))?
-            .to_str()
-            .map_err(|err| {
-                AuthResponse::InternalError("invalid x-request-uri header", Some(err.into()))
-            })?,
-    )
-    .map_err(|err| {
-        AuthResponse::InternalError(
-            "could not parse url in x-request-uri header",
-            Some(err.into()),
-        )
-    })?;
+pub enum AuthResponse {
+    Ok,
+    Forbidden,
+    RedirectToLogin(Url),
+    StoreSession(String, Url),
+    InternalError(&'static str, Option<Report>),
+}
 
-    let callback_url = oidc
-        .get_callback_url(&request_uri)
-        .map_err(|err| AuthResponse::InternalError("could not create callback url", Some(err)))?;
-    let login_url = oidc
-        .create_login_url(&request_uri, &callback_url)
-        .map_err(|err| AuthResponse::InternalError("could not create login url", Some(err)))?;
-
-    if request_uri.path() == oidc.auth_callback_path {
-        CallbackRequest {
-            request_uri,
-            callback_url,
-            login_url,
+impl IntoResponse for AuthResponse {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            Self::Ok => StatusCode::OK.into_response(),
+            Self::Forbidden => StatusCode::FORBIDDEN.into_response(),
+            Self::RedirectToLogin(url) => (
+                StatusCode::UNAUTHORIZED,
+                [("X-Auth-Redirect", url.as_str())],
+            )
+                .into_response(),
+            Self::StoreSession(session_id, redirect_url) => (
+                StatusCode::UNAUTHORIZED,
+                [
+                    ("X-Auth-Redirect", redirect_url.as_str()),
+                    (
+                        "X-Auth-Cookie",
+                        format!("_keycloak_auth_session={session_id}; Secure; HttpOnly; Path=/")
+                            .as_str(),
+                    ),
+                ],
+            )
+                .into_response(),
+            Self::InternalError(error, report) => {
+                error!("{}: {:?}", error, report);
+                (StatusCode::INTERNAL_SERVER_ERROR, error).into_response()
+            }
         }
-        .handle(&oidc)
-        .await
-    } else {
-        AuthRequest {
-            session_id: headers.typed_get::<Cookie>().and_then(|cookies| {
-                cookies
-                    .get("_keycloak_auth_session")
-                    .map(std::borrow::ToOwned::to_owned)
-            }),
-            role,
-            login_url,
-        }
-        .handle(&oidc)
-        .await
     }
 }

@@ -4,19 +4,6 @@ use redis::{aio::Connection, AsyncCommands, Client};
 
 use crate::oidc;
 
-#[derive(Debug)]
-pub struct Token {
-    pub access_token: String,
-    pub refresh_token: String,
-}
-
-#[derive(Debug)]
-pub enum SessionCache {
-    Allowed,
-    Forbidden,
-    NotCached,
-}
-
 pub struct Redis {
     client: Client,
     session_allowed_ttl: usize,
@@ -109,4 +96,17 @@ impl Redis {
             }
         })
     }
+}
+
+#[derive(Debug)]
+pub struct Token {
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
+#[derive(Debug)]
+pub enum SessionCache {
+    Allowed,
+    Forbidden,
+    NotCached,
 }
