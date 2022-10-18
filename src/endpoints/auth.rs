@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use axum::{
-    extract::Query,
+    extract::{Query, State},
     headers::{Cookie, HeaderMapExt},
     http::HeaderMap,
     http::StatusCode,
@@ -10,10 +12,7 @@ use log::{debug, error};
 use serde::Deserialize;
 use url::Url;
 
-use crate::{
-    config::config,
-    oidc::{create_login_url, create_session, get_callback_url, is_authorized, CodeAuth, Session},
-};
+use crate::oidc::{CodeAuth, Session, OIDC};
 
 pub enum AuthResponse {
     Ok,
@@ -65,9 +64,12 @@ struct AuthRequest {
 }
 
 impl AuthRequest {
-    async fn handle(self) -> Result<AuthResponse> {
+    async fn handle(self, oidc: &OIDC) -> Result<AuthResponse> {
         if let Some(session_id) = self.session_id {
-            match is_authorized(session_id.as_str(), self.role.as_str()).await {
+            match oidc
+                .is_authorized(session_id.as_str(), self.role.as_str())
+                .await
+            {
                 Ok(true) => return Ok(AuthResponse::Ok),
                 Ok(false) => return Ok(AuthResponse::Forbidden),
                 Err(err) => {
@@ -86,7 +88,7 @@ struct CallbackRequest {
 }
 
 impl CallbackRequest {
-    async fn handle(self) -> Result<AuthResponse> {
+    async fn handle(self, oidc: &OIDC) -> Result<AuthResponse> {
         let get_param = |key| {
             self.request_uri
                 .query_pairs()
@@ -103,21 +105,23 @@ impl CallbackRequest {
             AuthResponse::RedirectToLogin(self.login_url.clone())
         })?;
 
-        let Session { session_id, .. } = create_session(CodeAuth {
-            code,
-            callback_url: self.callback_url,
-        })
-        .await
-        .map_err(|err| {
-            debug!("could not create session: {:?}", err);
-            AuthResponse::RedirectToLogin(self.login_url.clone())
-        })?;
+        let Session { session_id, .. } = oidc
+            .create_session(CodeAuth {
+                code,
+                callback_url: self.callback_url,
+            })
+            .await
+            .map_err(|err| {
+                debug!("could not create session: {:?}", err);
+                AuthResponse::RedirectToLogin(self.login_url.clone())
+            })?;
 
         Ok(AuthResponse::StoreSession(session_id, state))
     }
 }
 
 pub async fn auth(
+    State(oidc): State<Arc<OIDC>>,
     Query(AuthQuery { role }): Query<AuthQuery>,
     headers: HeaderMap,
 ) -> axum::response::Result<AuthResponse> {
@@ -140,18 +144,20 @@ pub async fn auth(
         )
     })?;
 
-    let callback_url = get_callback_url(&request_uri)
+    let callback_url = oidc
+        .get_callback_url(&request_uri)
         .map_err(|err| AuthResponse::InternalError("could not create callback url", Some(err)))?;
-    let login_url = create_login_url(&request_uri, &callback_url)
+    let login_url = oidc
+        .create_login_url(&request_uri, &callback_url)
         .map_err(|err| AuthResponse::InternalError("could not create login url", Some(err)))?;
 
-    if request_uri.path() == config().auth_callback {
+    if request_uri.path() == oidc.auth_callback_path {
         CallbackRequest {
             request_uri,
             callback_url,
             login_url,
         }
-        .handle()
+        .handle(&oidc)
         .await
     } else {
         AuthRequest {
@@ -163,7 +169,7 @@ pub async fn auth(
             role,
             login_url,
         }
-        .handle()
+        .handle(&oidc)
         .await
     }
 }

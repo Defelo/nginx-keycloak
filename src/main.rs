@@ -16,18 +16,23 @@
     clippy::str_to_string,
     clippy::wildcard_enum_match_arm
 )]
-#![allow(clippy::unused_async, clippy::module_name_repetitions)]
+#![allow(
+    clippy::unused_async,
+    clippy::module_name_repetitions,
+    clippy::upper_case_acronyms
+)]
 
 use std::net::SocketAddr;
 
 use axum::Server;
+use log::{debug, info};
+use oidc::OIDC;
 
 mod config;
 mod endpoints;
 mod oidc;
 mod redis;
 
-#[allow(clippy::no_effect_underscore_binding)]
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     // initialize logger
@@ -37,11 +42,30 @@ async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
     // load config from environment variables
-    let conf = config::config();
+    info!("loading config");
+    let config = config::load()?;
+    debug!("config loaded: {config:#?}");
+
+    // create redis client
+    let redis = redis::Redis::new(
+        &config.redis_url,
+        config.session_allowed_ttl,
+        config.session_forbidden_ttl,
+    )?;
+
+    // create oidc client
+    let oidc = OIDC::new(
+        &config.keycloak_base_url,
+        config.client_id,
+        config.client_secret,
+        config.auth_callback_path,
+        redis,
+    )?;
 
     // start axum server
-    Server::bind(&SocketAddr::new(conf.host.parse()?, conf.port))
-        .serve(endpoints::router().into_make_service())
+    info!("starting server on {}:{}", config.host, config.port);
+    Server::bind(&SocketAddr::new(config.host.parse()?, config.port))
+        .serve(endpoints::router(oidc).into_make_service())
         .await?;
 
     Ok(())
