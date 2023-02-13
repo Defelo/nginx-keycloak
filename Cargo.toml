@@ -17,7 +17,7 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-axum = { version = "0.6.0-rc.2", default-features = false, features = ["headers", "query"] }
+axum = { version = "0.6.6", default-features = false, features = ["headers", "query"] }
 color-eyre = { version = "0.6.2", default-features = false }
 config = { version = "0.13.2", default-features = false }
 eyre = { version = "0.6.8", default-features = false }
