@@ -1,39 +1,41 @@
-FROM rust:alpine AS chef
+FROM rust:alpine as deps
+
+WORKDIR /deps
+
+COPY . .
+
+RUN find . -type f ! -name Cargo.toml ! -name Cargo.lock -delete \
+    && find . -type d -empty -delete \
+    && find . -type d | while read d; do mkdir "$d/src" && touch "$d/src/lib.rs"; done
+
+
+FROM rust:alpine AS builder
 
 WORKDIR /build
 
-RUN apk add --no-cache musl-dev \
-    && cargo install --locked cargo-chef
+RUN apk add --no-cache musl-dev clang mold
 
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV CARGO_TARGET_DIR=/target
+ENV RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=/usr/bin/mold"
 
-FROM chef AS planner
+COPY --from=deps /deps .
 
-COPY . .
-
-RUN cargo chef prepare --recipe-path recipe.json
-
-
-FROM chef AS builder
-
-COPY --from=planner /build/recipe.json recipe.json
-
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN cargo build --locked --release && rm -rf /build
 
 COPY . .
 
-RUN cargo build --locked --release \
-    && strip target/release/nginx-keycloak -o app
+RUN find . -exec touch {} \; \
+    && cargo build --locked --release \
+    && mkdir dist \
+    && cp $(find /target/release/ -maxdepth 1 -executable -type f) dist/ \
+    && strip dist/*
 
 
 FROM scratch
 
-LABEL org.opencontainers.image.source="https://github.com/Defelo/nginx-keycloak"
+ENV RUST_LOG=info
 
-ENV HOST=0.0.0.0 \
-    PORT=80
+COPY --from=builder /build/dist /
 
-EXPOSE 80
-
-COPY --from=builder /build/app /
-
-ENTRYPOINT ["/app"]
+ENTRYPOINT ["/nginx-keycloak"]
