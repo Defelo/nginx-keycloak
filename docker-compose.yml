@@ -5,6 +5,7 @@ services:
     image: ghcr.io/defelo/nginx-keycloak
     build: .
     restart: always
+    init: true
     env_file: nginx-keycloak.env
     depends_on:
       - redis
