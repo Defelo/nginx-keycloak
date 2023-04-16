@@ -13,15 +13,15 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-axum = { version = "0.6.0-rc.2", default-features = false, features = ["headers", "query"] }
+axum = { version = "0.6.15", default-features = false, features = ["tokio", "headers", "query"] }
 color-eyre = { version = "0.6.2", default-features = false }
-config = { version = "0.13.2", default-features = false }
+config = { version = "0.13.3", default-features = false }
 eyre = { version = "0.6.8", default-features = false }
 log = { version = "0.4.17", default-features = false }
 pretty_env_logger = { version = "0.4.0", default-features = false }
 rand = { version = "0.8.5", default-features = false, features = ["std", "std_rng"] }
-redis = { version = "0.22.1", default-features = false, features = ["tokio-comp"] }
-reqwest = { version = "0.11.12", default-features = false, features = ["json", "rustls-tls"] }
+redis = { version = "0.23.0", default-features = false, features = ["tokio-comp"] }
+reqwest = { version = "0.11.16", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.160", default-features = false, features = ["derive"] }
-tokio = { version = "1.21.2", default-features = false, features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.27.0", default-features = false, features = ["macros", "rt-multi-thread"] }
 url = { version = "2.3.1", default-features = false }
