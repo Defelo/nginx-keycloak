@@ -1,3 +1,11 @@
+[![check](https://github.com/Defelo/nginx-keycloak/actions/workflows/check.yml/badge.svg)](https://github.com/Defelo/nginx-keycloak/actions/workflows/check.yml)
+[![test](https://github.com/Defelo/nginx-keycloak/actions/workflows/test.yml/badge.svg)](https://github.com/Defelo/nginx-keycloak/actions/workflows/test.yml)
+[![docker](https://github.com/Defelo/nginx-keycloak/actions/workflows/docker.yml/badge.svg)](https://github.com/Defelo/nginx-keycloak/actions/workflows/docker.yml) <!--
+https://app.codecov.io/gh/Defelo/nginx-keycloak/settings/badge
+[![codecov](https://codecov.io/gh/Defelo/nginx-keycloak/branch/develop/graph/badge.svg?token=changeme)](https://codecov.io/gh/Defelo/nginx-keycloak) -->
+![Version](https://img.shields.io/github/v/tag/Defelo/nginx-keycloak?include_prereleases&label=version)
+[![dependency status](https://deps.rs/repo/github/Defelo/nginx-keycloak/status.svg)](https://deps.rs/repo/github/Defelo/nginx-keycloak)
+
 # nginx-keycloak
 [Keycloak](https://www.keycloak.org/) Integration for [Nginx](https://nginx.org/) via [`auth_request`](https://nginx.org/en/docs/http/ngx_http_auth_request_module.html)
 
