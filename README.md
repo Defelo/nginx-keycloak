@@ -35,7 +35,7 @@ Restricts access to Nginx sites by requiring users to authenticate with their Ke
 ### Nginx
 1. Make sure your nginx includes the [`ngx_http_auth_request_module`](https://nginx.org/en/docs/http/ngx_http_auth_request_module.html):
     ```sh
-    nginx -V 2>&1 | grep http_auth_request_module
+    nginx -V |& grep http_auth_request_module
     ```
 2. Create an internal `location` block in your server:
     ```nginx
