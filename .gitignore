@@ -2,3 +2,4 @@
 /target-tarpaulin
 .env
 tarpaulin-report.html
+result

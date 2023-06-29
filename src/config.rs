@@ -1,4 +1,8 @@
+use std::{env, path::PathBuf};
+
+use config::File;
 use eyre::Result;
+use log::info;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -8,15 +12,27 @@ pub struct Config {
     pub port: u16,
     pub keycloak_base_url: String,
     pub client_id: String,
-    pub client_secret: String,
+    #[serde(flatten)]
+    pub client_secret: ClientSecret,
     pub auth_callback_path: String,
     pub redis_url: String,
     pub session_allowed_ttl: usize,
     pub session_forbidden_ttl: usize,
 }
 
+#[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+#[serde(untagged)]
+pub enum ClientSecret {
+    String { client_secret: String },
+    File { client_secret_file: PathBuf },
+}
+
 pub fn load() -> Result<Config> {
+    let path = env::var("CONFIG_PATH").unwrap_or_else(|_| "config.toml".to_owned());
+    info!("Loading config from {path}");
     Ok(config::Config::builder()
+        .add_source(File::with_name(&path).required(false))
         .add_source(config::Environment::default())
         .build()?
         .try_deserialize()?)
@@ -47,7 +63,9 @@ mod tests {
                 port: 80,
                 keycloak_base_url: "http://id.domain.de/realms/my_realm/".to_owned(),
                 client_id: "my_oidc_client".to_owned(),
-                client_secret: "1t6IZN9qW2Ex1ZlS0OkBeATj".to_owned(),
+                client_secret: ClientSecret::String {
+                    client_secret: "1t6IZN9qW2Ex1ZlS0OkBeATj".to_owned()
+                },
                 auth_callback_path: "/_auth/callback".to_owned(),
                 redis_url: "redis://my_redis:6379/42".to_owned(),
                 session_allowed_ttl: 1337,
