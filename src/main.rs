@@ -42,6 +42,14 @@ async fn main() -> eyre::Result<()> {
     let config = config::load()?;
     debug!("config loaded: {config:#?}");
 
+    // load client_secret
+    let client_secret = match config.client_secret {
+        config::ClientSecret::String { client_secret } => client_secret,
+        config::ClientSecret::File { client_secret_file } => {
+            std::fs::read_to_string(client_secret_file)?
+        }
+    };
+
     // create redis client
     let redis = redis::Redis::new(
         &config.redis_url,
@@ -53,7 +61,7 @@ async fn main() -> eyre::Result<()> {
     let oidc = OIDC::new(
         &config.keycloak_base_url,
         config.client_id,
-        config.client_secret,
+        client_secret,
         config.auth_callback_path,
         redis,
     )?;
