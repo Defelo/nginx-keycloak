@@ -55,3 +55,40 @@ Restricts access to Nginx sites by requiring users to authenticate with their Ke
     error_page 401 =307 $auth_redirect;
     add_header Set-Cookie $auth_cookie always;
     ```
+
+## NixOS Module
+
+On a NixOS system you can import the `nginx-keycloak.nixosModules.nginx-keycloak` module and
+configure it like this:
+
+```nix
+{
+  services.nginx-keycloak = {
+    enable = true;
+    settings = {
+      host = "127.0.0.1";
+      port = 8000;
+      client_id = "nginx";
+      client_secret_file = "/run/secrets/nginx-keycloak/client_secret";
+      keycloak_base_url = "https://id.domain.de/realms/main/";
+    };
+  };
+}
+```
+
+Now you can use the following configuration to restrict access to nginx locations:
+
+```nix
+{
+  services.nginx.virtualHosts."my-service.domain.de" = {
+    locations."/" = {
+      return = "200 'Hello World!'";
+      extraConfig = nginx-keycloak.lib.auth_config ".auth";
+    };
+    locations.".auth" = nginx-keycloak.lib.auth_location {
+      host = "http://127.0.0.1:8000";
+      role = "my-service";
+    };
+  };
+}
+```
