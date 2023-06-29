@@ -1,6 +1,8 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
+use config::File;
 use eyre::Result;
+use log::info;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -27,7 +29,10 @@ pub enum ClientSecret {
 }
 
 pub fn load() -> Result<Config> {
+    let path = env::var("CONFIG_PATH").unwrap_or_else(|_| "config.toml".to_owned());
+    info!("Loading config from {path}");
     Ok(config::Config::builder()
+        .add_source(File::with_name(&path).required(false))
         .add_source(config::Environment::default())
         .build()?
         .try_deserialize()?)
