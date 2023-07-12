@@ -3,8 +3,7 @@ use std::sync::Arc;
 use axum::{
     extract::{Query, State},
     headers::{Cookie, HeaderMapExt},
-    http::HeaderMap,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Result},
 };
 use eyre::Report;
