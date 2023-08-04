@@ -13,7 +13,7 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-axum = { version = "0.6.19", default-features = false, features = ["tokio", "headers", "query"] }
+axum = { version = "0.6.20", default-features = false, features = ["tokio", "headers", "query"] }
 color-eyre = { version = "0.6.2", default-features = false }
 config = { version = "0.13.3", default-features = false, features = ["json", "toml"] }
 eyre = { version = "0.6.8", default-features = false }
