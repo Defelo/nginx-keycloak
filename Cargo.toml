@@ -10,7 +10,7 @@ repository = "https://github.com/Defelo/nginx-keycloak"
 [dependencies]
 axum = { version = "0.6.20", default-features = false, features = ["tokio", "headers", "query"] }
 color-eyre = { version = "0.6.2", default-features = false }
-config = { version = "0.13.3", default-features = false, features = ["json", "toml"] }
+config = { version = "0.13.4", default-features = false, features = ["json", "toml"] }
 eyre = { version = "0.6.9", default-features = false }
 log = { version = "0.4.20", default-features = false }
 pretty_env_logger = { version = "0.5.0", default-features = false }
@@ -19,4 +19,4 @@ redis = { version = "0.23.3", default-features = false, features = ["tokio-comp"
 reqwest = { version = "0.11.22", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.193", default-features = false, features = ["derive"] }
 tokio = { version = "1.34.0", default-features = false, features = ["macros", "rt-multi-thread"] }
-url = { version = "2.4.1", default-features = false }
+url = { version = "2.5.0", default-features = false }
