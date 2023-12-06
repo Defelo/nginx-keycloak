@@ -16,8 +16,8 @@ pub struct Config {
     pub client_secret: ClientSecret,
     pub auth_callback_path: String,
     pub redis_url: String,
-    pub session_allowed_ttl: usize,
-    pub session_forbidden_ttl: usize,
+    pub session_allowed_ttl: u64,
+    pub session_forbidden_ttl: u64,
 }
 
 #[derive(Debug, Deserialize)]

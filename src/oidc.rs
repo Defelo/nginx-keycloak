@@ -198,8 +198,8 @@ pub enum AuthType {
 pub struct TokenResponse {
     pub access_token: String,
     pub refresh_token: String,
-    pub expires_in: usize,
-    pub refresh_expires_in: usize,
+    pub expires_in: u64,
+    pub refresh_expires_in: u64,
 }
 
 #[derive(Deserialize, Debug)]

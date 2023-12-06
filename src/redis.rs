@@ -6,15 +6,15 @@ use crate::oidc;
 
 pub struct Redis {
     client: Client,
-    session_allowed_ttl: usize,
-    session_forbidden_ttl: usize,
+    session_allowed_ttl: u64,
+    session_forbidden_ttl: u64,
 }
 
 impl Redis {
     pub fn new(
         redis_url: &str,
-        session_allowed_ttl: usize,
-        session_forbidden_ttl: usize,
+        session_allowed_ttl: u64,
+        session_forbidden_ttl: u64,
     ) -> Result<Self> {
         Ok(Self {
             client: Client::open(redis_url)?,
