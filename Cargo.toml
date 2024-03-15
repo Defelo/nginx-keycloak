@@ -9,7 +9,7 @@ repository = "https://github.com/Defelo/nginx-keycloak"
 
 [dependencies]
 axum = { version = "0.6.20", default-features = false, features = ["tokio", "headers", "query"] }
-color-eyre = { version = "0.6.2", default-features = false }
+color-eyre = { version = "0.6.3", default-features = false }
 config = { version = "0.14.0", default-features = false, features = ["json", "toml"] }
 eyre = { version = "0.6.12", default-features = false }
 log = { version = "0.4.21", default-features = false }
